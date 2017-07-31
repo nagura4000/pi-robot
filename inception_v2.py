@@ -413,16 +413,6 @@ def preprocess_input(x):
 
 
 import cv2
-
-import socket
-import subprocess
-import xml.etree.ElementTree as ET
-import time
-
-HOST = "127.0.1.1"
-PORT = 10500
-
-
 if __name__ == '__main__':
     model = InceptionV3(include_top=True, weights='imagenet')
 
@@ -430,127 +420,42 @@ if __name__ == '__main__':
 
     print("start")
 
-
-    # julius起動スクリプトを実行
-    p = subprocess.Popen(["bash /home/pi/start_julius.sh"], stdout=subprocess.PIPE, shell=True)
-    
-    print(p)
-    pid = p.stdout.read() # juliusのプロセスIDを取得
-    pid = p.pid
-    print(pid)
-    
-    #time.sleep(5)
-    
-    # TCPクライアントを作成し接続
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(('localhost', 10500))
-    #client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #client.connect((HOST, PORT))
-    
-    print("start2")
-    
-    # サーバからのデータ受信と
-    data = ""
-    #while 1:
     while(True):
-        #ret, frame = cam.read()
-        #cv2.imshow("Show FLAME Image", frame)
-        #time.sleep(1)
-        if "</RECOGOUT>\n." in data:
-            # RECOGOUT要素以下をXMLとしてパース
-            root = ET.fromstring('<?xml version="1.0"?>\n' + data[data.find("<RECOGOUT>"):].replace("\n.", ""))
-            ret, frame = cam.read()
-            cv2.imshow("Show FLAME Image", frame)
-            #time.sleep(1)
-            # 言葉を判別
-            for whypo in root.findall("./SHYPO/WHYPO"):
-                word = whypo.get("WORD")
-                #ret, frame = cam.read()
-                #cv2.imshow("Show FLAME Image", frame)
-                if u"何ですか" in word:
+        ret, frame = cam.read()
+        cv2.imshow("Show FLAME Image", frame)
+        k = cv2.waitKey(1)
+        if k == ord('s'):
+            cv2.imwrite("output.png", frame)
+            img_path = "output.png"
+            img = image.load_img(img_path, target_size=(299, 299))
+            x = image.img_to_array(img)
+            x = np.expand_dims(x, axis=0)
 
-                    cv2.imwrite("output.png", frame)
-                    img_path = "output.png"
-                    img = image.load_img(img_path, target_size=(299, 299))
-                    x = image.img_to_array(img)
-                    x = np.expand_dims(x, axis=0)
+            x = preprocess_input(x)
 
-                    x = preprocess_input(x)
+            preds = model.predict(x)
+            recognize = decode_predictions(preds)
+            speak = recognize[0][0][1]
+            subprocess.check_output(["espeak", "-k5", "-s150", speak])
+            print('Label:', speak)
 
-                    preds = model.predict(x)
-                    recognize = decode_predictions(preds)
-                    speak = recognize[0][0][1]
-                    if speak == "nematode":
-                        jtalk("わかりません")
-                        data = ""
-                        continue
-                    #subprocess.check_output(["espeak", "-k5", "-s150", speak])
-                    print('Label:', speak)
+            with open('imagenet_class_index.json', 'r') as f:
+                obj = json.load(f)
+                for i in obj:
+                    if i['en'] == speak:
+                        jp_speak = i['ja']
+                        jp_speak = jp_speak.encode('utf-8')
+                        print(jp_speak)
+                        jtalk(jp_speak)
+                        
+            
 
-                    with open('imagenet_class_index.json', 'r') as f:
-                        obj = json.load(f)
-                        for i in obj:
-                            if i['en'] == speak:
-                                jp_speak = i['ja']
-                                jp_speak = jp_speak.encode('utf-8')
-                                print(jp_speak)
-                                #jtalk(jp_speak)
-                                jtalk("これは" + jp_speak + "だよ")
-                                #jtalk("英語では")
-                                #subprocess.check_output(["espeak", "-k5", "-s150", speak])
-                                #jtalk("です")
-
-
-                if u"終了" in word:
-                    jtalk("ばいばい")
-                    break
-                else:
-                    print("Unknown:" + word.encode('utf-8'))
-                    #print("Unknown:")
-            data = ""
-        else:
-            data = data + client.recv(1024)
-    
-    # CTRL+Cで終了
-    print("KeyboardInterrupt occured.")
-    p.kill() #
-    subprocess.call(["kill " + str(pid)], shell=True) # juliusのプロセスを終了
-    client.close()
+        elif k == ord('q'):
+            break
 
     cam.release()
     cv2.destroyAllWindows()
     
-    #while(True):
-    #    ret, frame = cam.read()
-    #    cv2.imshow("Show FLAME Image", frame)
-    #    k = cv2.waitKey(1)
-    #    if k == ord('s'):
-    #        cv2.imwrite("output.png", frame)
-    #        img_path = "output.png"
-    #        img = image.load_img(img_path, target_size=(299, 299))
-    #        x = image.img_to_array(img)
-    #        x = np.expand_dims(x, axis=0)
-
-    #        x = preprocess_input(x)
-
-    #        preds = model.predict(x)
-    #        recognize = decode_predictions(preds)
-    #        speak = recognize[0][0][1]
-    #        subprocess.check_output(["espeak", "-k5", "-s150", speak])
-    #        print('Label:', speak)
-
-    #        with open('imagenet_class_index.json', 'r') as f:
-    #            obj = json.load(f)
-    #            for i in obj:
-    #                if i['en'] == speak:
-    #                    jp_speak = i['ja']
-    #                    jp_speak = jp_speak.encode('utf-8')
-    #                    print(jp_speak)
-    #                    jtalk(jp_speak)
-    #                    
-    #        
-    #    elif k == ord('q'):
-    #        break
     #model = InceptionV3(include_top=True, weights='imagenet')
 
     #img_path = 'elephant.jpg'

@@ -458,10 +458,22 @@ if __name__ == '__main__':
         #time.sleep(1)
         if "</RECOGOUT>\n." in data:
             # RECOGOUT要素以下をXMLとしてパース
-            root = ET.fromstring('<?xml version="1.0"?>\n' + data[data.find("<RECOGOUT>"):].replace("\n.", ""))
+            try:
+                xmldata = '<?xml version="1.0"?>\n' + data[data.find("<RECOGOUT>"):].replace("\n.", "")
+                print(xmldata)
+                root = ET.fromstring(xmldata)
+            except Exception as e:
+                print(str(e))
+                data = ""
+                continue
+            #root = ET.fromstring('<?xml version="1.0"?>\n' + data[data.find("<RECOGOUT>"):].replace("\n.", ""))
             ret, frame = cam.read()
             cv2.imshow("Show FLAME Image", frame)
-            #time.sleep(1)
+            cv2.imwrite("output.png", frame)
+            img_path = "output.png"
+            img = image.load_img(img_path, target_size=(299, 299))
+            #k = cv2.waitKey(1)
+            time.sleep(1)
             # 言葉を判別
             for whypo in root.findall("./SHYPO/WHYPO"):
                 word = whypo.get("WORD")
@@ -469,9 +481,9 @@ if __name__ == '__main__':
                 #cv2.imshow("Show FLAME Image", frame)
                 if u"何ですか" in word:
 
-                    cv2.imwrite("output.png", frame)
-                    img_path = "output.png"
-                    img = image.load_img(img_path, target_size=(299, 299))
+                    #cv2.imwrite("output.png", frame)
+                    #img_path = "output.png"
+                    #img = image.load_img(img_path, target_size=(299, 299))
                     x = image.img_to_array(img)
                     x = np.expand_dims(x, axis=0)
 
@@ -520,47 +532,3 @@ if __name__ == '__main__':
     cam.release()
     cv2.destroyAllWindows()
     
-    #while(True):
-    #    ret, frame = cam.read()
-    #    cv2.imshow("Show FLAME Image", frame)
-    #    k = cv2.waitKey(1)
-    #    if k == ord('s'):
-    #        cv2.imwrite("output.png", frame)
-    #        img_path = "output.png"
-    #        img = image.load_img(img_path, target_size=(299, 299))
-    #        x = image.img_to_array(img)
-    #        x = np.expand_dims(x, axis=0)
-
-    #        x = preprocess_input(x)
-
-    #        preds = model.predict(x)
-    #        recognize = decode_predictions(preds)
-    #        speak = recognize[0][0][1]
-    #        subprocess.check_output(["espeak", "-k5", "-s150", speak])
-    #        print('Label:', speak)
-
-    #        with open('imagenet_class_index.json', 'r') as f:
-    #            obj = json.load(f)
-    #            for i in obj:
-    #                if i['en'] == speak:
-    #                    jp_speak = i['ja']
-    #                    jp_speak = jp_speak.encode('utf-8')
-    #                    print(jp_speak)
-    #                    jtalk(jp_speak)
-    #                    
-    #        
-    #    elif k == ord('q'):
-    #        break
-    #model = InceptionV3(include_top=True, weights='imagenet')
-
-    #img_path = 'elephant.jpg'
-    #img = image.load_img(img_path, target_size=(299, 299))
-    #x = image.img_to_array(img)
-    #x = np.expand_dims(x, axis=0)
-
-    #x = preprocess_input(x)
-
-    #preds = model.predict(x)
-    ##print('Predicted:', decode_predictions(preds))
-    #recognize = decode_predictions(preds)
-    #print('Label:', recognize[0][0][1])
